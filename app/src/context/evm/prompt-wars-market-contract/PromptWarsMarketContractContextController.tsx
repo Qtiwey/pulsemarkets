@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Signer, ethers } from "ethers";
 import { useAccount, Address } from "wagmi";
 import { useRouter } from "next/router";
-import { getContract, writeContract } from "@wagmi/core";
+import { getContract, readContract, waitForTransaction, writeContract } from "@wagmi/core";
 
 import { Market, Market__factory } from "providers/evm/contracts/prompt-wars";
 import { useRoutes } from "hooks/useRoutes/useRoutes";
@@ -19,6 +19,35 @@ import {
   zeroXaddress,
   PromptWarsMarketContractStatus,
 } from "./PromptWarsMarketContractContext.types";
+
+const erc20Abi = [
+  {
+    type: "function",
+    name: "allowance",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+] as const;
+
+type TransactionHash = `0x${string}`;
+type WriteTransactionResult = TransactionHash | { hash: TransactionHash };
+
+const getTransactionHash = (result: WriteTransactionResult): TransactionHash =>
+  typeof result === "string" ? result : result.hash;
 
 const deploy = async (
   signer: Signer,
@@ -42,8 +71,6 @@ const connect = async (address: string, provider: ethers.Signer | ethers.Provide
 
   return contract;
 };
-
-let marketContract: Market;
 
 export const PromptWarsMarketContractContextController = ({
   marketId,
@@ -219,7 +246,13 @@ export const PromptWarsMarketContractContextController = ({
     try {
       assertWalletConnection();
 
-      await marketContract.sell();
+      const sellResult = (await writeContract({
+        address: marketId as Address,
+        abi: Market__factory.abi,
+        functionName: "sell",
+      })) as WriteTransactionResult;
+
+      await waitForTransaction({ hash: getTransactionHash(sellResult) });
 
       toast.trigger({
         variant: "confirmation",
@@ -240,7 +273,7 @@ export const PromptWarsMarketContractContextController = ({
   };
 
   const ftTransferCall = async (prompt: string) => {
-    if (!marketContractValues) {
+    if (!marketContractValues || !address) {
       return;
     }
 
@@ -256,13 +289,36 @@ export const PromptWarsMarketContractContextController = ({
       }));
 
       const amount = marketContractValues.fees.price.toString();
+      const tokenAddress = marketContractValues.collateralToken.id as Address;
+      const spender = marketId as Address;
+      const price = BigInt(amount);
 
-      await writeContract({
+      const allowance = (await readContract({
+        address: tokenAddress,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [address, spender],
+      })) as bigint;
+
+      if (allowance < price) {
+        const approveResult = (await writeContract({
+          address: tokenAddress,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [spender, price],
+        })) as WriteTransactionResult;
+
+        await waitForTransaction({ hash: getTransactionHash(approveResult) });
+      }
+
+      const registerResult = (await writeContract({
         address: marketId as Address,
         abi: Market__factory.abi,
         functionName: "register",
         args: [prompt],
-      });
+      })) as WriteTransactionResult;
+
+      await waitForTransaction({ hash: getTransactionHash(registerResult) });
 
       setActions((prev) => ({
         ...prev,
@@ -293,7 +349,7 @@ export const PromptWarsMarketContractContextController = ({
         ftTransferCall: {
           ...prev.ftTransferCall,
           isLoading: false,
-          success: true,
+          success: false,
         },
       }));
     }
