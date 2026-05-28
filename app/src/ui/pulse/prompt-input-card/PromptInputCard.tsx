@@ -9,13 +9,18 @@ import { Card } from "ui/card/Card";
 import { Typography } from "ui/typography/Typography";
 import { Button } from "ui/button/Button";
 import { Icon } from "ui/icon/Icon";
-import { PromptWarsMarketContractStatus } from "providers/near/contracts/prompt-wars/prompt-wars.types";
+import { PromptWarsMarketContractStatus } from "context/evm/prompt-wars-market-contract/PromptWarsMarketContractContext.types";
 import currency from "providers/currency";
 import pulse from "providers/pulse";
 import { useEVMPromptWarsMarketContractContext } from "context/evm/prompt-wars-market-contract/useEVMPromptWarsMarketContractContext";
 
 import { PromptInputCardProps } from "./PromptInputCard.types";
 import styles from "./PromptInputCard.module.scss";
+
+type PromptInputFormValues = {
+  value?: string;
+  negative_prompt?: string;
+};
 
 export const PromptInputCard: React.FC<PromptInputCardProps> = ({
   onSubmit,
@@ -40,11 +45,13 @@ export const PromptInputCard: React.FC<PromptInputCardProps> = ({
     open();
   };
 
+  const handleSubmit = (values: PromptInputFormValues) => onSubmit(JSON.stringify(values));
+
   return (
     <RFForm
-      onSubmit={onSubmit}
-      render={({ handleSubmit }) => (
-        <form onSubmit={handleSubmit}>
+      onSubmit={handleSubmit}
+      render={({ handleSubmit: handleFormSubmit }) => (
+        <form onSubmit={handleFormSubmit}>
           <Card className={clsx(styles["prompt-input-card"], className)} withSpotlightEffect>
             <Card.Content>
               <Typography.Headline3 className={styles["prompt-input-card__title"]}>
