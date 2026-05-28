@@ -6,12 +6,45 @@ import { Typography } from "ui/typography/Typography";
 import { Grid } from "ui/grid/Grid";
 import { Card } from "ui/card/Card";
 import ipfs from "providers/ipfs";
-import { OutcomeId } from "providers/near/contracts/prompt-wars/prompt-wars.types";
 import { Icon } from "ui/icon/Icon";
 import { useEVMPromptWarsMarketContractContext } from "context/evm/prompt-wars-market-contract/useEVMPromptWarsMarketContractContext";
+import {
+  Player,
+  zeroXaddress,
+} from "context/evm/prompt-wars-market-contract/PromptWarsMarketContractContext.types";
 
 import styles from "./ResultsModal.module.scss";
 import { ResultsModalOutcomeToken, ResultsModalProps } from "./ResultsModal.types";
+
+const emptyAddress: zeroXaddress = "0x0000000000000000000000000000000000000000";
+
+const getPromptValues = (prompt: string) => {
+  try {
+    const parsed = JSON.parse(prompt) as { value?: string; negative_prompt?: string };
+
+    return {
+      prompt: parsed.value ?? prompt,
+      negativePrompt: parsed.negative_prompt ?? "",
+    };
+  } catch {
+    return {
+      prompt,
+      negativePrompt: "",
+    };
+  }
+};
+
+const toOutcomeToken = (player: Player): ResultsModalOutcomeToken => {
+  const { prompt, negativePrompt } = getPromptValues(player.prompt);
+
+  return {
+    outcomeId: player.id,
+    outputImgUrl: player.outputImgUri ? ipfs.asHttpsURL(player.outputImgUri) : "/shared/loading-spinner.gif",
+    prompt,
+    negativePrompt,
+    result: player.result,
+  };
+};
 
 export const ResultsModal: React.FC<ResultsModalProps> = ({ onClose, className, marketContractValues }) => {
   const [outcomeToken, setOutcomeToken] = useState<ResultsModalOutcomeToken | undefined>();
@@ -19,50 +52,51 @@ export const ResultsModal: React.FC<ResultsModalProps> = ({ onClose, className, 
 
   const contract = useEVMPromptWarsMarketContractContext();
 
-  const { resolution, market, isResolved } = marketContractValues;
+  const { resolution, market, isResolved, currentPlayer } = marketContractValues;
 
-  const getOutcomeToken = async (outcome_id: OutcomeId) => {
-    const ot = await contract.getOutcomeToken({ outcome_id });
+  const getOutcomeToken = async (playerId: zeroXaddress) => {
+    const player = await contract.getPlayer(playerId);
 
-    if (!ot) {
+    if (!player) {
       return;
     }
 
-    setOutcomeToken({
-      outcomeId: ot.outcome_id,
-      outputImgUrl: ipfs.asHttpsURL(ot.output_img_uri!),
-      prompt: JSON.parse(ot.prompt).value,
-      negativePrompt: JSON.parse(ot.prompt).negative_prompt,
-      result: ot.result!,
-    });
+    setOutcomeToken(toOutcomeToken(player));
   };
 
   const getWinnerOutcomeToken = async () => {
-    const ot = await contract.getOutcomeToken({ outcome_id: resolution.result! });
+    const winnerId = resolution.playerId as zeroXaddress;
 
-    if (!ot) {
+    if (!winnerId || winnerId === emptyAddress) {
       return;
     }
 
-    setWinnerOutcomeToken({
-      outcomeId: ot.outcome_id,
-      outputImgUrl: ipfs.asHttpsURL(ot.output_img_uri!),
-      prompt: JSON.parse(ot.prompt).value,
-      negativePrompt: JSON.parse(ot.prompt).negative_prompt,
-      result: ot.result!,
-    });
+    const player = await contract.getPlayer(winnerId);
+
+    if (!player) {
+      return;
+    }
+
+    const token = toOutcomeToken(player);
+
+    setWinnerOutcomeToken(token);
+    setOutcomeToken(token);
   };
 
-  useEffect(() => {
-    if (!isResolved) {
-      getOutcomeToken(outcomeIds[0]);
+  const outcomeIds = [winnerOutcomeToken?.outcomeId, outcomeToken?.outcomeId, currentPlayer?.id].filter(
+    (outcomeId, index, list): outcomeId is zeroXaddress => !!outcomeId && list.indexOf(outcomeId) === index,
+  );
 
+  useEffect(() => {
+    if (isResolved) {
+      getWinnerOutcomeToken();
       return;
     }
 
-    getWinnerOutcomeToken();
-    getOutcomeToken(resolution.result!);
-  }, []);
+    if (currentPlayer?.id) {
+      getOutcomeToken(currentPlayer.id);
+    }
+  }, [currentPlayer?.id, isResolved, resolution.playerId]);
 
   return (
     <Modal
@@ -115,10 +149,10 @@ export const ResultsModal: React.FC<ResultsModalProps> = ({ onClose, className, 
                         <Typography.Description
                           flat
                           className={clsx({
-                            [styles["results-modal__outcome-ids-list--item-winner"]]: outcomeId === resolution.result,
+                            [styles["results-modal__outcome-ids-list--item-winner"]]: outcomeId === resolution.playerId,
                           })}
                         >
-                          {outcomeId === resolution.result && <Icon name="icon-medal-first" />} {outcomeId}
+                          {outcomeId === resolution.playerId && <Icon name="icon-medal-first" />} {outcomeId}
                         </Typography.Description>
                       </div>
                       <div className={styles["results-modal__outcome-ids-list--item-right"]}>
