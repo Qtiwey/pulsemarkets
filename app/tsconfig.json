@@ -26,7 +26,11 @@
       "layouts/*": ["src/layouts/*"],
       "api/*": ["src/pages/api/*"],
       "providers/*": ["src/providers/*"],
-      "types/*": ["src/types/*"]
+      "types/*": ["src/types/*"],
+      "@aufacicenta/fileagent-db/db": ["../database/db"],
+      "@aufacicenta/fileagent-db/models": ["../database/models"],
+      "pg": ["node_modules/@types/pg/index.d.ts"],
+      "sequelize": ["node_modules/sequelize"]
     },
     "incremental": true
   },
