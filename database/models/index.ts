@@ -1,4 +1,4 @@
-import type { Sequelize, Model } from "sequelize";
+import type { Sequelize } from "sequelize";
 import { ContentExtraction } from "./ContentExtraction";
 
 export { ContentExtraction };
