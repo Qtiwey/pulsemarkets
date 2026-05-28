@@ -1,5 +1,6 @@
 // eslint-disable-next-line import/no-unresolved
 const { i18n } = require("./next-i18next.config");
+const path = require("path");
 
 /**
  * Stolen from https://stackoverflow.com/questions/10776600/testing-for-equality-of-regular-expressions
@@ -14,6 +15,9 @@ const regexEqual = (x, y) =>
 
 module.exports = {
   i18n,
+  experimental: {
+    externalDir: true,
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -26,6 +30,10 @@ module.exports = {
     ];
   },
   webpack: (config) => {
+    config.resolve.alias["@aufacicenta/fileagent-db/models"] = path.resolve(__dirname, "../database/models");
+    config.resolve.alias["@aufacicenta/fileagent-db/db"] = path.resolve(__dirname, "../database/db");
+    config.resolve.modules.push(path.resolve(__dirname, "node_modules"));
+
     const oneOf = config.module.rules.find((rule) => typeof rule.oneOf === "object");
 
     if (oneOf) {
