@@ -5,7 +5,12 @@ import { Market } from "providers/evm/contracts/prompt-wars";
 
 type AccountId = string;
 export type zeroXaddress = `0x${string}`;
-export type Player = Pick<Market.PlayerStructOutput, "id" | "balance" | "result" | "prompt" | "outputImgUri">;
+export type Player = Omit<
+  Pick<Market.PlayerStructOutput, "id" | "balance" | "result" | "prompt" | "outputImgUri">,
+  "id"
+> & {
+  id: zeroXaddress;
+};
 
 export type PromptWarsMarketContractContextControllerProps = {
   marketId: AccountId;
