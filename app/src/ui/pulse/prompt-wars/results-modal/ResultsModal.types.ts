@@ -1,7 +1,9 @@
 import { ReactNode } from "react";
 
-import { OutcomeId } from "providers/near/contracts/prompt-wars/prompt-wars.types";
-import { PromptWarsMarketContractValues } from "context/evm/prompt-wars-market-contract/PromptWarsMarketContractContext.types";
+import {
+  PromptWarsMarketContractValues,
+  zeroXaddress,
+} from "context/evm/prompt-wars-market-contract/PromptWarsMarketContractContext.types";
 
 export type ResultsModalProps = {
   onClose: () => void;
@@ -11,9 +13,9 @@ export type ResultsModalProps = {
 };
 
 export type ResultsModalOutcomeToken = {
-  outcomeId: OutcomeId;
+  outcomeId: zeroXaddress;
   outputImgUrl: string;
   prompt: string;
   negativePrompt: string;
-  result: number;
+  result: string;
 };
