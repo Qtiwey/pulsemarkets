@@ -9,7 +9,7 @@ import { Typography } from "ui/typography/Typography";
 import { Icon } from "ui/icon/Icon";
 import near from "providers/near";
 import currency from "providers/currency";
-import { PromptWarsMarketContractStatus } from "providers/near/contracts/prompt-wars/prompt-wars.types";
+import { PromptWarsMarketContractStatus } from "context/evm/prompt-wars-market-contract/PromptWarsMarketContractContext.types";
 import ipfs from "providers/ipfs";
 import { Button } from "ui/button/Button";
 
